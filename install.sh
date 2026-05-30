@@ -12,10 +12,8 @@
 
 set -e
 
-# --- Configuration -----------------------------------------------------------
 KIOSK_USER="kiosk"
 KIOSK_URL="${KIOSK_URL:-https://tmo.chapelthrillescapes.com/room2}"
-# -----------------------------------------------------------------------------
 
 if [[ $EUID -ne 0 ]]; then
   echo "Please run as root: sudo bash $0"
@@ -24,55 +22,60 @@ fi
 
 echo "==> Kiosk URL: $KIOSK_URL"
 
+# --- User ---------------------------------------------------------------------
+
 echo "==> Creating kiosk user: $KIOSK_USER"
 if id "$KIOSK_USER" &>/dev/null; then
   echo "    User already exists, skipping creation."
 else
   useradd -m -s /bin/bash "$KIOSK_USER"
-  passwd -l "$KIOSK_USER"  # Lock password login (autologin only)
+  passwd -l "$KIOSK_USER"
 fi
 
 usermod -aG video,audio,input,render "$KIOSK_USER"
 
+# --- Packages -----------------------------------------------------------------
+
 echo "==> Installing required packages"
 apt-get update -qq
-apt-get install -y --no-install-recommends \
-  chromium-browser
+apt-get install -y --no-install-recommends chromium-browser
+
+# --- Autologin ----------------------------------------------------------------
 
 echo "==> Configuring autologin via raspi-config"
 raspi-config nonint do_boot_behaviour B4
-
-# raspi-config sets autologin for the 'pi' user by default — point it to ours
 sed -i "s/^autologin-user=.*/autologin-user=$KIOSK_USER/" /etc/lightdm/lightdm.conf
 
-echo "==> Setting up Openbox autostart for $KIOSK_USER"
-OPENBOX_DIR="/home/$KIOSK_USER/.config/openbox"
-mkdir -p "$OPENBOX_DIR"
+# --- Autostart ----------------------------------------------------------------
 
-cat > "$OPENBOX_DIR/autostart" <<AUTOSTART
-# Disable screen blanking and power management
-xset s off &
-xset s noblank &
-xset -dpms &
+echo "==> Writing autostart desktop files"
+AUTOSTART_DIR="/home/$KIOSK_USER/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
 
-# Launch Chromium in kiosk mode
-chromium-browser \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --no-first-run \
-  --disable-session-crashed-bubble \
-  --disable-restore-session-state \
-  --disable-translate \
-  --disable-features=TranslateUI \
-  --check-for-update-interval=31536000 \
-  --autoplay-policy=no-user-gesture-required \
-  "$KIOSK_URL" &
-AUTOSTART
+cat > "$AUTOSTART_DIR/screensaver-off.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Disable Screensaver
+Exec=xset s off -dpms
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+DESKTOP
 
-echo "==> Configuring Chromium autoplay policy"
+cat > "$AUTOSTART_DIR/chromium-kiosk.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Chromium Kiosk
+Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run --disable-session-crashed-bubble --disable-restore-session-state --disable-translate --disable-features=TranslateUI --check-for-update-interval=31536000 --autoplay-policy=no-user-gesture-required $KIOSK_URL
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+DESKTOP
+
+# --- Chromium preferences -----------------------------------------------------
+
+echo "==> Writing Chromium preferences"
 CHROMIUM_PREFS_DIR="/home/$KIOSK_USER/.config/chromium/Default"
 mkdir -p "$CHROMIUM_PREFS_DIR"
+
 cat > "$CHROMIUM_PREFS_DIR/Preferences" <<PREFS
 {
   "profile": {
@@ -91,6 +94,8 @@ cat > "$CHROMIUM_PREFS_DIR/Preferences" <<PREFS
   }
 }
 PREFS
+
+# --- Permissions --------------------------------------------------------------
 
 chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
 
