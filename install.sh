@@ -70,6 +70,28 @@ chromium-browser \
   "$KIOSK_URL" &
 AUTOSTART
 
+echo "==> Configuring Chromium autoplay policy"
+CHROMIUM_PREFS_DIR="/home/$KIOSK_USER/.config/chromium/Default"
+mkdir -p "$CHROMIUM_PREFS_DIR"
+cat > "$CHROMIUM_PREFS_DIR/Preferences" <<PREFS
+{
+  "profile": {
+    "default_content_setting_values": {
+      "media_stream": 1
+    },
+    "content_settings": {
+      "exceptions": {
+        "autoplay": {
+          "*,*": {
+            "setting": 1
+          }
+        }
+      }
+    }
+  }
+}
+PREFS
+
 chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
 
 echo ""
