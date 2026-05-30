@@ -69,7 +69,20 @@ NoDisplay=true
 X-GNOME-Autostart-enabled=true
 DESKTOP
 
-# --- Chromium preferences -----------------------------------------------------
+# --- Chromium managed policy --------------------------------------------------
+
+echo "==> Writing Chromium managed policy"
+POLICY_DIR="/etc/chromium/policies/managed"
+mkdir -p "$POLICY_DIR"
+
+cat > "$POLICY_DIR/kiosk.json" <<POLICY
+{
+  "AutoplayAllowed": true,
+  "AutoplayAllowlist": ["https://tmo.chapelthrillescapes.com"]
+}
+POLICY
+
+# --- Chromium preferences ----------------------------------------------------
 
 echo "==> Writing Chromium preferences"
 CHROMIUM_PREFS_DIR="/home/$KIOSK_USER/.config/chromium/Default"
