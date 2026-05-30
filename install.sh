@@ -3,17 +3,16 @@
 # Raspberry Pi 5 Kiosk Setup Script
 #
 # Usage:
-#   sudo bash kiosk-setup.sh
-#   KIOSK_URL="https://example.com" sudo -E bash kiosk-setup.sh
+#   sudo bash kiosk-setup.sh <url>
 #
 # curl usage:
-#   curl -fsSL https://your-host/kiosk-setup.sh | KIOSK_URL="https://example.com" sudo -E bash
+#   curl -fsSL https://your-host/kiosk-setup.sh | sudo bash -s -- <url>
 # =============================================================================
 
 set -e
 
 KIOSK_USER="kiosk"
-KIOSK_URL="${KIOSK_URL:-https://tmo.chapelthrillescapes.com/room2}"
+KIOSK_URL="${1:-https://tmo.chapelthrillescapes.com/room2}"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Please run as root: sudo bash $0"
